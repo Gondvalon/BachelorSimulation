@@ -6,20 +6,24 @@
 
 namespace gazebo {
     class VitalRadar : public SensorPlugin {
-    public: void Load(sensors::SensorPtr _parent, sdf::ElementPtr) {
-        this->sensor = _parent;
+        public: void Load(sensors::SensorPtr _parent, sdf::ElementPtr) {
+            this->sensor = _parent;
 
-        this->updateConnection = event::Events::ConnectCreateSensor(std::bind(&VitalRadar::OnUpdate, this));
-    }
+            printf("%d", this->sensor.IsActive());
 
-    public:
-        void OnUpdate() {
-            printf("Works!\n");
-    }
+            this->updateConnection = event::Events::ConnectCreateSensor(std::bind(&VitalRadar::OnUpdate, this));
+        }
 
-    private: sensors::SensorPtr sensor;
+        public:
+            void OnUpdate() {
+                printf("Works!\n");
+        }
 
-    private: event::ConnectionPtr updateConnection;
+        private: sensors::RaySensorPtr sensor;
+
+        private: event::ConnectionPtr updateConnection;
+
+        private: sensors::RaySensor raySensor;
     };
     GZ_REGISTER_SENSOR_PLUGIN(VitalRadar)
 }

@@ -20,6 +20,7 @@
     </light>
     <include>
       <uri>model://box</uri>
+      <!--<plugin name='respi_rate' filename='librespi_rate.so'/>-->
     </include>
     <include>
       <uri>model://vital_radar</uri>
