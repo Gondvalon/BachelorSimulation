@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(respi_rate)
+project(vital_radar)
 
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
@@ -17,3 +17,4 @@ link_directories(${GAZEBO_LIBRARY_DIRS})
 
 add_library(vital_radar SHARED vital_radar.cpp)
 target_link_libraries(vital_radar ${GAZEBO_LIBRARIES} ${Boost_LIBRARIES})
+target_include_directories(vital_radar PUBLIC includes/)

@@ -4,26 +4,39 @@
 #include <ignition/math/Vector3.hh>
 #include <cmath>
 
-namespace gazebo {
-    class VitalRadar : public SensorPlugin {
-        public: void Load(sensors::SensorPtr _parent, sdf::ElementPtr) {
-            this->sensor = _parent;
+#include <functional>
+#include "gazebo/physics/physics.hh"
+#include "vital_radar.hh"
 
-            printf("%d", this->sensor.IsActive());
+using namespace gazebo;
 
-            this->updateConnection = event::Events::ConnectCreateSensor(std::bind(&VitalRadar::OnUpdate, this));
-        }
+GZ_REGISTER_SENSOR_PLUGIN(RayPlugin)
 
-        public:
-            void OnUpdate() {
-                printf("Works!\n");
-        }
+RayPlugin::RayPlugin() {}
 
-        private: sensors::RaySensorPtr sensor;
+RayPlugin::~RayPlugin() {
+    this->newLaserScansConnection.reset();
 
-        private: event::ConnectionPtr updateConnection;
+    this->parentSensor.reset();
+    this->world.reset();
+}
 
-        private: sensors::RaySensor raySensor;
-    };
-    GZ_REGISTER_SENSOR_PLUGIN(VitalRadar)
+void RayPlugin::Load(sensors::SensorPtr _parent, sdf::ElementPtr /*_sdf*/) {
+    this->parentSensor = std::dynamic_pointer_cast<sensors::RaySensor>(_parent);
+
+    if(!this->parentSensor)
+        printf("Sadly wrong sensor\n");
+        gzthrow("RayPlugin requires Ray Senspr as its parent.\n");
+
+    this->world = physics::get_world(this->parentSensor->WorldName());
+
+    this->newLaserScansConnection =
+            this->parentSensor->LaserShape()->ConnectNewLaserScans(std::bind(&RayPlugin::OnNewLaserScans, this));
+
+    printf("I did it\n");
+
+}
+
+void RayPlugin::OnNewLaserScans() {
+
 }
