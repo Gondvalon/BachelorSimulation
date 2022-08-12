@@ -21,6 +21,10 @@ namespace gazebo {
     private: sensors::RaySensorPtr parentSensor;
 
     private: event::ConnectionPtr newLaserScansConnection;
+
+    private: int objectCount;
+
+    private: std::vector<double> ranges;
     };
 }
 #endif

@@ -18,61 +18,15 @@
         <falloff>0</falloff>
       </spot>
     </light>
-    <include>
-      <uri>model://box</uri>
-      <!--<plugin name='respi_rate' filename='librespi_rate.so'/>-->
-    </include>
-    <include>
-      <uri>model://vital_radar</uri>
-    </include>
-    <model name='ground_plane'>
-      <static>1</static>
-      <link name='link'>
-        <collision name='collision'>
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>100 100</size>
-            </plane>
-          </geometry>
-          <surface>
-            <contact>
-              <collide_bitmask>65535</collide_bitmask>
-              <ode/>
-            </contact>
-            <friction>
-              <ode>
-                <mu>100</mu>
-                <mu2>50</mu2>
-              </ode>
-              <torsional>
-                <ode/>
-              </torsional>
-            </friction>
-            <bounce/>
-          </surface>
-          <max_contacts>10</max_contacts>
-        </collision>
-        <visual name='visual'>
-          <cast_shadows>0</cast_shadows>
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>100 100</size>
-            </plane>
-          </geometry>
-          <material>
-            <script>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-              <name>Gazebo/Grey</name>
-            </script>
-          </material>
-        </visual>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
+    <model name="sensor">
+      <include>
+        <uri>model://vital_radar</uri>
+        <pose>0 1 0.1 0 0 0</pose>
+      </include>
     </model>
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
     <gravity>0 0 0</gravity>
     <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
     <atmosphere type='adiabatic'/>
@@ -94,45 +48,6 @@
       <elevation>0</elevation>
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
-    <state world_name='default'>
-      <sim_time>0 0</sim_time>
-      <real_time>0 0</real_time>
-      <wall_time>1658919279 995344566</wall_time>
-      <iterations>0</iterations>
-      <model name='box'>
-        <pose>1.00126 0.99759 0.001097 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link 1'>
-          <pose>2.00126 1.99759 1.0011 0 -0 0</pose>
-          <velocity>0.000296 -0.000566 0.000258 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='ground_plane'>
-        <pose>0 0 0 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose>0 0 0 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='vital_sensor'>
-        <pose>-0.000287 -5e-06 0.142862 4.9e-05 -0.002872 -9e-06</pose>
-        <scale>1 1 1</scale>
-        <link name='sensor'>
-          <pose>-0.000287 -5e-06 0.142862 4.9e-05 -0.002872 -9e-06</pose>
-          <velocity>-2e-05 -0 0.01002 3e-06 -0.000201 -1e-06</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <light name='sun'>
-        <pose>0 0 10 0 -0 0</pose>
-      </light>
-    </state>
     <gui fullscreen='0'>
       <camera name='user_camera'>
         <pose>3.42346 11.8062 0.025986 -0 0.094022 -1.6645</pose>

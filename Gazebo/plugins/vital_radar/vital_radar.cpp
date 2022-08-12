@@ -21,22 +21,34 @@ RayPlugin::~RayPlugin() {
     this->world.reset();
 }
 
-void RayPlugin::Load(sensors::SensorPtr _parent, sdf::ElementPtr /*_sdf*/) {
-    this->parentSensor = std::dynamic_pointer_cast<sensors::RaySensor>(_parent);
+void RayPlugin::Load(sensors::SensorPtr _sensor, sdf::ElementPtr _sdf) {
+    this->parentSensor = std::dynamic_pointer_cast<sensors::RaySensor>(_sensor);
 
     if(!this->parentSensor)
-        printf("Sadly wrong sensor\n");
-        gzthrow("RayPlugin requires Ray Senspr as its parent.\n");
+        gzthrow("RayPlugin requires Ray or Lidar Sensor as its parent.\n");
 
     this->world = physics::get_world(this->parentSensor->WorldName());
 
     this->newLaserScansConnection =
             this->parentSensor->LaserShape()->ConnectNewLaserScans(std::bind(&RayPlugin::OnNewLaserScans, this));
 
-    printf("I did it\n");
+    this->objectCount = 0;
+
+
+    printf("AngleMax: %f    AngleMin: %f    AngleRes: %f\n",this->parentSensor->AngleMax().Degree(),
+           this->parentSensor->AngleMin().Degree(), this->parentSensor->AngleResolution());
 
 }
 
 void RayPlugin::OnNewLaserScans() {
-
+    this->parentSensor->Ranges(ranges);
+    if (this->ranges.size() > 0) {
+        for(int i = 0; i < this->ranges.size()-1; i++) {
+            if (fabs(this->ranges.at(i)-this->ranges.at(i+1)) > 0.5) {
+                this->objectCount = this->objectCount + 1;
+                printf("Rays: %f    %f\n", this->ranges.at(i), this->ranges.at(i+1));
+            }
+        }
+        printf("Objects: %d\n", this->objectCount);
+    }
 }
