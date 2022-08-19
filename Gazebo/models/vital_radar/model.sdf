@@ -1,7 +1,7 @@
 <?xml version='1.0'?>
 <sdf version='1.7'>
   <model name='sensor'>
-    <link name='sensor_link'>
+    <link name='radar_link'>
       <inertial>
         <mass>1</mass>
         <inertia>
@@ -43,21 +43,21 @@
         <transparency>0.1</transparency>
         <cast_shadows>1</cast_shadows>
       </visual>
-      <sensor name='radar_sensor' type='ray'>
+      <sensor name='radar' type='ray'>
         <always_on>true</always_on>
         <update_rate>30</update_rate>
         <topic>radar_sensor</topic>
-        <pose>0 0 0.5 0 0 0</pose>
+        <pose>0 0 0 0 0 0</pose>
         <ray>
           <scan>
             <horizontal>
-              <samples>64</samples>
+              <samples>24</samples>
               <resolution>1</resolution>
               <min_angle>-0.349</min_angle>
               <max_angle>0.349</max_angle>
             </horizontal>
             <vertical>
-              <samples>64</samples>
+              <samples>24</samples>
               <resolution>1</resolution>
               <min_angle>-0.26</min_angle>
               <max_angle>0.26</max_angle>

@@ -5,6 +5,7 @@
 #include <gazebo/sensors/SensorTypes.hh>
 #include <gazebo/sensors/RaySensor.hh>
 #include <gazebo/util/system.hh>
+#include <ignition/math/Vector3.hh>
 
 namespace gazebo {
     class GZ_PLUGIN_VISIBLE RayPlugin : public SensorPlugin {
@@ -25,6 +26,11 @@ namespace gazebo {
     private: int objectCount;
 
     private: std::vector<double> ranges;
+
+    private: ignition::math::Vector3d position;
+    private: std::string name;
+
+    private: std::size_t found;
     };
 }
 #endif

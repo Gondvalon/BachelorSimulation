@@ -18,11 +18,11 @@
         <falloff>0</falloff>
       </spot>
     </light>
-    <model name="sensor">
+    <model name="radar_sensor">
       <include>
         <uri>model://vital_radar</uri>
-        <pose>0 1 0.1 0 0 0</pose>
       </include>
+      <pose>2 1 0.5 0 0 0</pose>
     </model>
     <include>
       <uri>model://ground_plane</uri>

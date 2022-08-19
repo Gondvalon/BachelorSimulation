@@ -34,21 +34,34 @@ void RayPlugin::Load(sensors::SensorPtr _sensor, sdf::ElementPtr _sdf) {
 
     this->objectCount = 0;
 
-
     printf("AngleMax: %f    AngleMin: %f    AngleRes: %f\n",this->parentSensor->AngleMax().Degree(),
            this->parentSensor->AngleMin().Degree(), this->parentSensor->AngleResolution());
-
+    //get model name of model which includes the sensor in world file
+    this->name = this->parentSensor->ScopedName();
+    std::reverse(name.begin(), name.end());
+    this->found = this->name.find("rosnes");
+    this->name = this->name.substr(this->found);
+    this->name = this->name.substr(8);
+    this->found = this->name.find("::");
+    this->name = this->name.substr(0, this->found);
+    std::reverse(name.begin(), name.end());
 }
 
 void RayPlugin::OnNewLaserScans() {
     this->parentSensor->Ranges(ranges);
+
     if (this->ranges.size() > 0) {
-        for(int i = 0; i < this->ranges.size()-1; i++) {
-            if (fabs(this->ranges.at(i)-this->ranges.at(i+1)) > 0.5) {
+        for(int i = 0; i < this->ranges.size(); i++) {
+            if (this->ranges.at(i) <= this->parentSensor->RangeMax()) {
                 this->objectCount = this->objectCount + 1;
-                printf("Rays: %f    %f\n", this->ranges.at(i), this->ranges.at(i+1));
             }
         }
-        printf("Objects: %d\n", this->objectCount);
+        //get radar model position
+        this->position = this->world->ModelByName(this->name)->WorldPose().Pos();
+        
+        //printf("Position: %d    Substr: %s\n",this->found, this->name.c_str());
+        printf("X: %f    Y: %f    Z: %f\n", this->position.X(), this->position.Y(), this->position.Z());
+        //printf("Objects: %d\n", this->objectCount);
+        this->objectCount = 0;
     }
 }
