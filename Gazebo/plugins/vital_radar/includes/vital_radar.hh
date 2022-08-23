@@ -6,6 +6,7 @@
 #include <gazebo/sensors/RaySensor.hh>
 #include <gazebo/util/system.hh>
 #include <ignition/math/Vector3.hh>
+#include <list>
 
 namespace gazebo {
     class GZ_PLUGIN_VISIBLE RayPlugin : public SensorPlugin {
@@ -28,6 +29,8 @@ namespace gazebo {
     private: event::ConnectionPtr newLaserScansConnection;
 
     private: int objectCount;
+    private: int modelHits;
+    private: int listSize;
 
     private: double x;
     private: double y;
@@ -38,11 +41,19 @@ namespace gazebo {
     private: ignition::math::Vector3d position;
     private: ignition::math::Vector3d hitModelPosition;
 
+    private: double horizontalAngleStep;
+    private: double verticalAngleStep;
+
+    private: double angleH;
+    private: double angleV;
+
     private: std::string name;
 
     private: std::string modelName;
 
     private: std::size_t found;
+
+    private: std::list<std::string> models;
     };
 }
 #endif
