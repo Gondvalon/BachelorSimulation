@@ -17,7 +17,11 @@ namespace gazebo {
 
     public: void Load(sensors::SensorPtr _parent, sdf::ElementPtr _sdf);
 
+    public: void rotateRayPoint(ignition::math::Vector3d &rotation);
+
     protected: physics::WorldPtr world;
+
+    private: physics::ModelPtr radarDetection;
 
     private: sensors::RaySensorPtr parentSensor;
 
@@ -25,10 +29,18 @@ namespace gazebo {
 
     private: int objectCount;
 
+    private: double x;
+    private: double y;
+    private: double z;
+
     private: std::vector<double> ranges;
 
     private: ignition::math::Vector3d position;
+    private: ignition::math::Vector3d hitModelPosition;
+
     private: std::string name;
+
+    private: std::string modelName;
 
     private: std::size_t found;
     };
