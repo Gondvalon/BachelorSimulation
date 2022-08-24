@@ -48,9 +48,9 @@ void RayPlugin::Load(sensors::SensorPtr _sensor, sdf::ElementPtr _sdf) {
     this->name = this->name.substr(0, this->found);
     std::reverse(name.begin(), name.end());
 
-    this->horizontalAngleStep = (this->parentSensor->AngleMax().Radian() - this->parentSensor->AngleMin().Radian())
+    this->horizontalAngleStep = (this->parentSensor->AngleMax() - this->parentSensor->AngleMin()).Radian()
             / (this->parentSensor->LaserShape()->GetSampleCount()-1);
-    this->verticalAngleStep = (this->parentSensor->VerticalAngleMax().Radian() - this->parentSensor->VerticalAngleMin().Radian())
+    this->verticalAngleStep = (this->parentSensor->VerticalAngleMax() - this->parentSensor->VerticalAngleMin()).Radian()
             / (this->parentSensor->LaserShape()->GetVerticalSampleCount()-1);
     printf("StepH : %f   StepV: %f\n", this->horizontalAngleStep, this->verticalAngleStep);
 
@@ -69,6 +69,11 @@ void RayPlugin::OnNewLaserScans() {
     if (this->ranges.size() > 0) {
         for(int i = 0; i < this->ranges.size(); i++) {
             if (this->ranges.at(i) <= this->parentSensor->RangeMax()) {
+                if ((i+1) % this->parentSensor->LaserShape()->GetSampleCount() == 0) {
+                    this->angleH = this->parentSensor->AngleMax().Radian();
+                }
+                //printf("AngleH: %f   AngleV: %f   I: %d\n", this->angleH, this->angleV, i);
+
                 this->objectCount = this->objectCount + 1;
 
                 //calculate the position of the object hit by ray
@@ -77,29 +82,33 @@ void RayPlugin::OnNewLaserScans() {
                 this->z = this->ranges.at(i)*(-1)*sin(this->angleV);
 
                 //calculate the rotation of the found hit object with the rotation of the sensor
-                this->hitModelPosition = ignition::math::Vector3d(this->x * cos(this->position.Z()) * cos(this->position.Y())
-                        + this->y * (cos(this->position.Z()) * sin(this->position.Y()) * sin(this->position.X()) - sin(this->position.Z()) * cos(this->position.X()))
-                        + this->z * (cos(this->position.Z()) * sin(this->position.Y()) * cos(this->position.X()) + sin(this->position.Z()) * sin(this->position.X())),
-                        this->x * sin(this->position.Z()) * cos(this->position.Y())
-                        + this->y * (sin(this->position.Z()) * sin(this->position.Y()) * sin(this->position.X()) + cos(this->position.Z()) * cos(this->position.X()))
-                        + this->z * (sin(this->position.Z()) * sin(this->position.Y()) * cos(this->position.X()) - cos(this->position.Z()) * sin(this->position.X())),
-                        this->x * (-1) * sin(this->position.Y()) + this->y * cos(this->position.Y()) * sin(this->position.X())
-                        + this->z * cos(this->position.Y()) * cos(this->position.X()));
-
+                this->hitModelPosition =
+                        this->world->ModelByName(this->name)->WorldPose().Rot().RotateVector(ignition::math::Vector3d(this->x, this->y, this->z));
+                
                 //gets model which is hit by the ray
                 this->radarDetection = this->world->ModelBelowPoint(this->world->ModelByName(this->name)->WorldPose().Pos()
-                        + this->hitModelPosition);
+                        + this->hitModelPosition+ignition::math::Vector3d(0.0, 0.0, 0.0001));
+
+                /*printf("Looking Pos X: %f   Y: %f   Z: %f\n", (this->world->ModelByName(this->name)->WorldPose().Pos()
+                        + this->hitModelPosition).X(), (this->world->ModelByName(this->name)->WorldPose().Pos()
+                        + this->hitModelPosition).Y(), (this->world->ModelByName(this->name)->WorldPose().Pos()
+                        + this->hitModelPosition).Z());
+                        */
 
                 if(!(this->radarDetection == NULL)) {
-                    this->modelHits = this->modelHits++;
+                    this->modelHits = this->modelHits+1;
                     this->modelName = this->radarDetection->GetName();
                     this->models.push_back(this->modelName);
+                    //printf("Found: %d\n\n", i);
                     this->models.unique();
                 }
             }
 
             this->angleH = this->angleH + this->horizontalAngleStep;
-            if (!(i==0) && i % this->parentSensor->LaserShape()->GetSampleCount() == 0) {
+            //printf("AngleIBH: %f\n", this->angleH);
+            if (!(i==0) && (i+1) % this->parentSensor->LaserShape()->GetSampleCount() == 0) {
+                //printf("\n");
+                //printf("AngleH: %f   AngleV: %f   I: %d\n", this->angleH, this->angleV, i);
                 this->angleH = this->parentSensor->AngleMin().Radian();
                 this->angleV = this->angleV - this->verticalAngleStep;
             }
