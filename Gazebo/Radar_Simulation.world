@@ -22,7 +22,7 @@
       <include>
         <uri>model://vital_radar</uri>
       </include>
-      <pose>0 0 4 0 0.785398 0.785398</pose>
+      <pose>1 2 4 0 0.19 1.22</pose>
     </model>
     <!--include>
       <uri>model://ground_plane</uri>

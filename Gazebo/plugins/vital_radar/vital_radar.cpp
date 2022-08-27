@@ -1,6 +1,7 @@
 #include <gazebo/gazebo.hh>
 #include <gazebo/sensors/sensors.hh>
 #include <gazebo/common/common.hh>
+#include <gazebo/physics/physics.hh>
 #include <ignition/math/Vector3.hh>
 #include <cmath>
 #include <list>
@@ -33,8 +34,6 @@ void RayPlugin::Load(sensors::SensorPtr _sensor, sdf::ElementPtr _sdf) {
     this->newLaserScansConnection =
             this->parentSensor->LaserShape()->ConnectNewLaserScans(std::bind(&RayPlugin::OnNewLaserScans, this));
 
-    this->objectCount = 0;
-
     printf("AngleMax: %f    AngleMin: %f    AngleRes: %f\n",this->parentSensor->AngleMax().Degree(),
            this->parentSensor->AngleMin().Degree(), this->parentSensor->AngleResolution());
     //get model name of model which includes the sensor model
@@ -55,6 +54,7 @@ void RayPlugin::Load(sensors::SensorPtr _sensor, sdf::ElementPtr _sdf) {
     printf("StepH : %f   StepV: %f\n", this->horizontalAngleStep, this->verticalAngleStep);
 
     this->models = {};
+    this->modelHits = 0;
 };
 
 void RayPlugin::OnNewLaserScans() {
@@ -66,79 +66,66 @@ void RayPlugin::OnNewLaserScans() {
 
     //printf("RollX: %f    RollY: %f    RollZ: %f\n", this->position.X(), this->position.Y(), this->position.Z());
 
-    if (this->ranges.size() > 0) {
-        for(int i = 0; i < this->ranges.size(); i++) {
-            if (this->ranges.at(i) <= this->parentSensor->RangeMax()) {
-                if ((i+1) % this->parentSensor->LaserShape()->GetSampleCount() == 0) {
-                    this->angleH = this->parentSensor->AngleMax().Radian();
-                }
-                //printf("AngleH: %f   AngleV: %f   I: %d\n", this->angleH, this->angleV, i);
-
-                this->objectCount = this->objectCount + 1;
-
-                //calculate the position of the object hit by ray
-                this->x = this->ranges.at(i)*cos(this->angleH)*cos(this->angleV);
-                this->y = this->ranges.at(i)*sin(this->angleH)*cos(this->angleV);
-                this->z = this->ranges.at(i)*(-1)*sin(this->angleV);
-
-                //calculate the rotation of the found hit object with the rotation of the sensor
-                this->hitModelPosition =
-                        this->world->ModelByName(this->name)->WorldPose().Rot().RotateVector(ignition::math::Vector3d(this->x, this->y, this->z));
-                
-                //gets model which is hit by the ray
-                this->radarDetection = this->world->ModelBelowPoint(this->world->ModelByName(this->name)->WorldPose().Pos()
-                        + this->hitModelPosition+ignition::math::Vector3d(0.0, 0.0, 0.0001));
-
-                /*printf("Looking Pos X: %f   Y: %f   Z: %f\n", (this->world->ModelByName(this->name)->WorldPose().Pos()
-                        + this->hitModelPosition).X(), (this->world->ModelByName(this->name)->WorldPose().Pos()
-                        + this->hitModelPosition).Y(), (this->world->ModelByName(this->name)->WorldPose().Pos()
-                        + this->hitModelPosition).Z());
-                        */
-
-                if(!(this->radarDetection == NULL)) {
-                    this->modelHits = this->modelHits+1;
-                    this->modelName = this->radarDetection->GetName();
-                    this->models.push_back(this->modelName);
-                    //printf("Found: %d\n\n", i);
-                    this->models.unique();
-                }
-            }
-
-            this->angleH = this->angleH + this->horizontalAngleStep;
-            //printf("AngleIBH: %f\n", this->angleH);
-            if (!(i==0) && (i+1) % this->parentSensor->LaserShape()->GetSampleCount() == 0) {
-                //printf("\n");
-                //printf("AngleH: %f   AngleV: %f   I: %d\n", this->angleH, this->angleV, i);
-                this->angleH = this->parentSensor->AngleMin().Radian();
-                this->angleV = this->angleV - this->verticalAngleStep;
-            }
-        }
-        this->listSize = this->models.size();
-        for(int i = 0; i < this->listSize; i++){
-            printf("FoundModel: %s    ListSize: %d\n", this->models.front().c_str(), this->models.size());
-            this->models.pop_front();
-        }
-
-        /*
-        if(!(this->radarDetection == NULL)) {
-            this->modelName = this->radarDetection->GetName();
-            printf("FoundModel: %s\n", this->modelName.c_str());
-        }
-
-        printf("Range: %f  LookingAt X: %f   Y: %f   Z: %f\n\n", this->ranges.at(0),
-               this->hitModelPosition.X() + this->world->ModelByName(this->name)->WorldPose().Pos().X(),
-               this->hitModelPosition.Y() + this->world->ModelByName(this->name)->WorldPose().Pos().Y(),
-               this->hitModelPosition.Z() + this->world->ModelByName(this->name)->WorldPose().Pos().Z());
-               */
-        printf("ModelH: %d   ObjC: %d\n\n", this->modelHits, this->objectCount);
-        this->modelHits = 0;
-        this->objectCount = 0;
-
-        this->models.clear();
+    if (this->ranges.size() <= 0) {
+        return;
     }
-}
+    for(int i = 0; i < this->ranges.size(); i++) {
+        if (this->ranges.at(i) > this->parentSensor->RangeMax()) {
+            continue;
+        }
 
-void rotateRayPoint(ignition::math::Vector3d &rotation) {
-    //rotates the found point of the radar, so it fits with the coordinates of the robot
+        this->rayTravelDist = this->parentSensor->RangeMin();
+        while (this->rayTravelDist <= this->parentSensor->RangeMax()) {
+            this->rayShape = this->parentSensor->LaserShape()->Ray(i);
+            double temp = 0.0;
+            this->rayShape->GetIntersection(temp, this->hitModelName);
+            
+            if (temp > this->parentSensor->RangeMax()) {
+                break;
+            }
+
+            std::size_t seperator;
+            seperator = this->hitModelName.find("::");
+            this->hitModelName = this->hitModelName.substr(0, seperator);
+            this->radarDetection = this->world->ModelByName(this->hitModelName);
+
+            this->modelHits = this->modelHits+1;
+            this->models.push_back(this->hitModelName);
+            //printf("Found: %d\n\n", i);
+            this->models.unique();
+
+            printf("ModelName: %s\n", this->hitModelName.c_str());
+
+            this->rayShape->RelativePoints(this->rayStart, this->rayEnd);
+
+            //printf("Start x: %f  y: %f  z: %f\n", this->rayStart.X(), this->rayStart.Y(), this->rayStart.Z());
+            //printf("End x: %f  y: %f  z: %f\n", this->rayEnd.X(), this->rayEnd.Y(), this->rayEnd.Z());
+
+            //calculates gradient of current ray
+            this->rayGradient = this->rayEnd - this->rayStart;
+            this->rayGradient = this->rayGradient.Normalize();
+
+            //printf("Gradient x: %f  y: %f  z: %f\n", this->rayGradient.X(), this->rayGradient.Y(), this->rayGradient.Z());
+
+            this->rayTravelDist = this->rayTravelDist + temp + 0.001;
+
+            printf("Dist: %f\n", this->rayTravelDist);
+
+            this->rayShape->SetPoints(this->rayGradient * this->rayTravelDist, this->rayGradient * this->parentSensor->RangeMax());
+        }
+        //resets ray
+        this->rayShape->SetPoints(this->rayGradient * this->parentSensor->RangeMin(), this->rayGradient * this->parentSensor->RangeMax());
+    }
+    this->models.sort();
+    this->models.unique();
+    int listSize = this->models.size();
+    for(int i = 0; i < listSize; i++){
+        printf("FoundModel: %s    ListSize: %d\n", this->models.front().c_str(), this->models.size());
+        this->models.pop_front();
+    }
+    printf("ModelH: %d\n\n", this->modelHits);
+    this->modelHits = 0;
+
+    this->models.clear();
 
 }

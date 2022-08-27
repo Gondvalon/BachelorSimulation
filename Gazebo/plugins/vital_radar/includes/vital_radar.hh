@@ -4,56 +4,63 @@
 #include <gazebo/common/Plugin.hh>
 #include <gazebo/sensors/SensorTypes.hh>
 #include <gazebo/sensors/RaySensor.hh>
+#include <gazebo/physics/MultiRayShape.hh>
+#include <gazebo/physics/RayShape.hh>
 #include <gazebo/util/system.hh>
 #include <ignition/math/Vector3.hh>
 #include <list>
 
 namespace gazebo {
     class GZ_PLUGIN_VISIBLE RayPlugin : public SensorPlugin {
-    public: RayPlugin();
+    public:
+        RayPlugin();
 
-    public: virtual ~RayPlugin();
+        virtual ~RayPlugin();
 
-    public: virtual void OnNewLaserScans();
+        virtual void OnNewLaserScans();
 
-    public: void Load(sensors::SensorPtr _parent, sdf::ElementPtr _sdf);
+        void Load(sensors::SensorPtr _parent, sdf::ElementPtr _sdf);
 
-    public: void rotateRayPoint(ignition::math::Vector3d &rotation);
+        void rotateRayPoint(ignition::math::Vector3d &rotation);
 
-    protected: physics::WorldPtr world;
+        protected: physics::WorldPtr world;
 
-    private: physics::ModelPtr radarDetection;
+        
+    private:
+        physics::ModelPtr radarDetection;
 
-    private: sensors::RaySensorPtr parentSensor;
+        sensors::RaySensorPtr parentSensor;
+        physics::MultiRayShapePtr multiRayShape;
+        physics::RayShapePtr rayShape;
 
-    private: event::ConnectionPtr newLaserScansConnection;
+        event::ConnectionPtr newLaserScansConnection;
 
-    private: int objectCount;
-    private: int modelHits;
-    private: int listSize;
+        int modelHits;
 
-    private: double x;
-    private: double y;
-    private: double z;
+        std::vector<double> ranges;
 
-    private: std::vector<double> ranges;
+        ignition::math::Vector3d position;
+        ignition::math::Vector3d hitModelPosition;
 
-    private: ignition::math::Vector3d position;
-    private: ignition::math::Vector3d hitModelPosition;
+        ignition::math::Vector3d rayStart;
+        ignition::math::Vector3d rayEnd;
+        ignition::math::Vector3d rayGradient;
 
-    private: double horizontalAngleStep;
-    private: double verticalAngleStep;
+        double rayTravelDist;
 
-    private: double angleH;
-    private: double angleV;
+        double horizontalAngleStep;
+        double verticalAngleStep;
 
-    private: std::string name;
+        double angleH;
+        double angleV;
 
-    private: std::string modelName;
+        std::string name;
 
-    private: std::size_t found;
+        std::string hitModelName;
 
-    private: std::list<std::string> models;
+        std::size_t found;
+
+        std::list<std::string> models;
     };
 }
 #endif
