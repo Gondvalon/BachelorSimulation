@@ -21,26 +21,17 @@ namespace gazebo {
 
         void Load(sensors::SensorPtr _parent, sdf::ElementPtr _sdf);
 
-        void rotateRayPoint(ignition::math::Vector3d &rotation);
-
-        protected: physics::WorldPtr world;
-
         
     private:
+        physics::WorldPtr world;
         physics::ModelPtr radarDetection;
-
-        sensors::RaySensorPtr parentSensor;
-        physics::MultiRayShapePtr multiRayShape;
-        physics::RayShapePtr rayShape;
 
         event::ConnectionPtr newLaserScansConnection;
 
-        int modelHits;
+        sensors::RaySensorPtr parentSensor;
+        physics::RayShapePtr rayShape;
 
         std::vector<double> ranges;
-
-        ignition::math::Vector3d position;
-        ignition::math::Vector3d hitModelPosition;
 
         ignition::math::Vector3d rayStart;
         ignition::math::Vector3d rayEnd;
@@ -48,19 +39,8 @@ namespace gazebo {
 
         double rayTravelDist;
 
-        double horizontalAngleStep;
-        double verticalAngleStep;
-
-        double angleH;
-        double angleV;
-
-        std::string name;
-
-        std::string hitModelName;
-
-        std::size_t found;
-
         std::list<std::string> models;
+        int modelHits;
     };
 }
 #endif

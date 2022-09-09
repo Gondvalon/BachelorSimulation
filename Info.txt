@@ -1,2 +1,6 @@
 RaySensor: Ranges count goes from lower right to upper left
 
+Zoom-Meeting:
+ID: 699 4341 2640
+PW: 503058
+Link: https://tu-darmstadt.zoom.us/j/69943412640?pwd=U3E1ejE1RmJuNlB2bFNwcFM4OStKdz09
