@@ -39,6 +39,7 @@ namespace gazebo {
 
         double rayTravelDist;
 
+
         std::list<std::string> models;
         int modelHits;
     };

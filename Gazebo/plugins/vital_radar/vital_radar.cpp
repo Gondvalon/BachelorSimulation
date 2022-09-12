@@ -31,7 +31,6 @@ void RayPlugin::Load(sensors::SensorPtr _sensor, sdf::ElementPtr _sdf) {
 
     this->world = physics::get_world(this->parentSensor->WorldName());
 
-
     this->newLaserScansConnection =
             this->parentSensor->LaserShape()->ConnectNewLaserScans(std::bind(&RayPlugin::OnNewLaserScans, this));
 
@@ -40,30 +39,33 @@ void RayPlugin::Load(sensors::SensorPtr _sensor, sdf::ElementPtr _sdf) {
 };
 
 void RayPlugin::OnNewLaserScans() {
-    printf("Pos X:%f  Y:%f  Z:%f\n", this->parentSensor->Pose().Pos().X(), this->parentSensor->Pose().Pos().Y(), this->parentSensor->Pose().Pos().Z());
-    std::string hitModelName;
+    //update MultiRayShape collision box position
+    physics::CollisionPtr coll = boost::dynamic_pointer_cast<physics::Collision>(this->parentSensor->LaserShape()->GetParent());
+    coll->SetWorldPoseDirty();
 
+    std::string modelHitByRay;
     this->parentSensor->Ranges(ranges);
 
     if (this->ranges.size() <= 0) {
         return;
     }
     for(int i = 0; i < this->ranges.size(); i++) {
+        //update RayShape collision box position
+        physics::CollisionPtr rayColl = boost::dynamic_pointer_cast<physics::Collision>(this->parentSensor->LaserShape()->Ray(i)->GetParent());
+        rayColl->SetWorldPoseDirty();
+
         if (this->ranges.at(i) > this->parentSensor->RangeMax()) {
             continue;
         }
 
         this->rayTravelDist = this->parentSensor->RangeMin();
         while (this->rayTravelDist <= this->parentSensor->RangeMax()) {
-            printf("i: %d\n", i);
             this->rayShape = this->parentSensor->LaserShape()->Ray(i);
+
             double temp = 0.0;
-            this->rayShape->GetIntersection(temp, hitModelName);
-            printf("NewStart X:%f  Y:%f  Z:%f\n", this->rayShape->Start().X(), this->rayShape->Start().Y(), this->rayShape->Start().Z());
-            printf("NewStart X:%f  Y:%f  Z:%f\n", this->rayShape->End().X(), this->rayShape->End().Y(), this->rayShape->End().Z());
+            this->rayShape->GetIntersection(temp, modelHitByRay);
 
             this->rayShape->RelativePoints(this->rayStart, this->rayEnd);
-
             this->rayGradient = this->rayEnd - this->rayStart;
             this->rayGradient = this->rayGradient.Normalize();
 
@@ -76,40 +78,32 @@ void RayPlugin::OnNewLaserScans() {
             this->rayShape->GlobalPoints(this->rayStart, this->rayEnd);
 
             std::size_t seperator;
-            seperator = hitModelName.find("::");
-            hitModelName = hitModelName.substr(0, seperator);
-            this->radarDetection = this->world->ModelByName(hitModelName);
+            seperator = modelHitByRay.find("::");
+            modelHitByRay = modelHitByRay.substr(0, seperator);
+            this->radarDetection = this->world->ModelByName(modelHitByRay);
 
             if ( this->radarDetection->GetSDF()->HasElement("human:heartRate")) {
                 printf("Is alive with heart: %s", this->radarDetection->GetSDF()->GetElement("human:heartRate")->GetValue()->GetAsString().c_str());
             }
 
             this->modelHits = this->modelHits+1;
-            this->models.push_back(hitModelName);
+            this->models.push_back(modelHitByRay);
             this->models.unique();
-
-            printf("Start X:%f  Y:%f  Z:%f\n",this->rayStart.X(), this->rayStart.Y(), this->rayStart.Z());
-            printf("End X:%f  Y:%f  Z:%f\n",this->rayEnd.X(), this->rayEnd.Y(), this->rayEnd.Z());
-            printf("Dist:%f\n", temp);
 
 
             this->rayTravelDist = this->rayTravelDist + temp + 0.001;
-            printf("TravelDist:%f\n", this->rayTravelDist);
 
-            //this->rayShape->Update();
-            //printf("CPtrName: %s", this->rayShape->collisionParent->GetName().c_str());
-            printf("NRayS X:%f  Y:%f  Z:%f\n",(this->rayGradient * this->rayTravelDist).X(), (this->rayGradient * this->rayTravelDist).Y(), (this->rayGradient * this->rayTravelDist).Z());
-            printf("NRayE X:%f  Y:%f  Z:%f\n",(this->rayGradient * this->parentSensor->RangeMax()).X(),(this->rayGradient * this->parentSensor->RangeMax()).Y(),(this->rayGradient * this->parentSensor->RangeMax()).Z());
             this->rayShape->SetPoints(this->rayGradient * this->rayTravelDist, this->rayGradient * this->parentSensor->RangeMax());
         }
         //resets ray
         this->rayShape->SetPoints(this->rayGradient * this->parentSensor->RangeMin(), this->rayGradient * this->parentSensor->RangeMax());
     }
+    
     this->models.sort();
     this->models.unique();
     int listSize = this->models.size();
     for(int i = 0; i < listSize; i++){
-        printf("FoundModel: %s    ListSize: %d\n", this->models.front().c_str(), this->models.size());
+        printf("FoundModel: %s    ListSize: %ld\n", this->models.front().c_str(), this->models.size());
         this->models.pop_front();
     }
     printf("ModelH: %d\n\n", this->modelHits);
