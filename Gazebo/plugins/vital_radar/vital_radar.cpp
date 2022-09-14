@@ -12,18 +12,18 @@
 
 using namespace gazebo;
 
-GZ_REGISTER_SENSOR_PLUGIN(RayPlugin)
+GZ_REGISTER_SENSOR_PLUGIN(VitalRadar)
 
-RayPlugin::RayPlugin() {}
+VitalRadar::VitalRadar() {}
 
-RayPlugin::~RayPlugin() {
+VitalRadar::~VitalRadar() {
     this->newLaserScansConnection.reset();
 
     this->sensor.reset();
     this->world.reset();
 }
 
-void RayPlugin::Load(sensors::SensorPtr _sensor, sdf::ElementPtr _sdf) {
+void VitalRadar::Load(sensors::SensorPtr _sensor, sdf::ElementPtr _sdf) {
     this->sensor = std::dynamic_pointer_cast<sensors::RaySensor>(_sensor);
 
     if(!this->sensor)
@@ -47,13 +47,13 @@ void RayPlugin::Load(sensors::SensorPtr _sensor, sdf::ElementPtr _sdf) {
     }
 
     this->newLaserScansConnection =
-            this->sensor->LaserShape()->ConnectNewLaserScans(std::bind(&RayPlugin::OnNewLaserScans, this));
+            this->sensor->LaserShape()->ConnectNewLaserScans(std::bind(&VitalRadar::OnNewLaserScans, this));
 
     this->models = {};
     this->modelHits = 0;
 };
 
-void RayPlugin::OnNewLaserScans() {
+void VitalRadar::OnNewLaserScans() {
     //update MultiRayShape collision box position
     physics::CollisionPtr coll = boost::dynamic_pointer_cast<physics::Collision>(this->sensor->LaserShape()->GetParent());
     coll->SetWorldPoseDirty();

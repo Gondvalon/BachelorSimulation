@@ -11,11 +11,11 @@
 #include <list>
 
 namespace gazebo {
-    class GZ_PLUGIN_VISIBLE RayPlugin : public SensorPlugin {
+    class GZ_PLUGIN_VISIBLE VitalRadar : public SensorPlugin {
     public:
-        RayPlugin();
+        VitalRadar();
 
-        virtual ~RayPlugin();
+        virtual ~VitalRadar();
 
         virtual void OnNewLaserScans();
 
