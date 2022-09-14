@@ -70,7 +70,11 @@
           </range>
         </ray>
         <visualize>true</visualize>
-        <plugin name='vital_radar' filename='libvital_radar.so'/>
+        <plugin name='vital_radar' filename='libvital_radar.so'>
+          <penetrableWalls>1000</penetrableWalls>
+          <signalStrength>100.0</signalStrength>
+          <airDamping>0.0</airDamping>
+        </plugin>
       </sensor>
     </link>
     <static>0</static>

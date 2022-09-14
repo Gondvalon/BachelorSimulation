@@ -23,21 +23,31 @@ namespace gazebo {
 
         
     private:
+        sensors::RaySensorPtr sensor;
         physics::WorldPtr world;
-        physics::ModelPtr radarDetection;
 
         event::ConnectionPtr newLaserScansConnection;
 
-        sensors::RaySensorPtr parentSensor;
-        physics::RayShapePtr rayShape;
-
         std::vector<double> ranges;
 
+        physics::RayShapePtr rayShape;
+
+        physics::ModelPtr modelHitByRay;
+
+        //calculating new Rays
         ignition::math::Vector3d rayStart;
         ignition::math::Vector3d rayEnd;
         ignition::math::Vector3d rayGradient;
 
-        double rayTravelDist;
+        double heartRate;
+        double respiratoryRate;
+
+        //parameters changable in sdf sensor plugin
+        int penetrableWalls;
+        double signalStrength;
+        //damping per cm
+        double airDamping;
+        double wallDamping;
 
 
         std::list<std::string> models;
