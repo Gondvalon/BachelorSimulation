@@ -40,10 +40,10 @@ void RayPlugin::Load(sensors::SensorPtr _sensor, sdf::ElementPtr _sdf) {
         this->penetrableWalls = std::stoi(_sdf->GetElement("penetrableWalls")->GetValue()->GetAsString());
     }
     if (_sdf->HasElement("signalStrength")) {
-        this->penetrableWalls = std::stod(_sdf->GetElement("signalStrength")->GetValue()->GetAsString());
+        this->signalStrength = std::stod(_sdf->GetElement("signalStrength")->GetValue()->GetAsString());
     }
     if (_sdf->HasElement("airDamping")) {
-        this->penetrableWalls = std::stod(_sdf->GetElement("airDamping")->GetValue()->GetAsString());
+        this->airDamping = std::stod(_sdf->GetElement("airDamping")->GetValue()->GetAsString());
     }
 
     this->newLaserScansConnection =
@@ -109,7 +109,6 @@ void RayPlugin::OnNewLaserScans() {
             } else {
                 raySignalStrength = raySignalStrength - this->airDamping * sectionTilHit * 100;
             }
-
 
             if (penetratedWalls > this->penetrableWalls || raySignalStrength <= 0) {
                 break;
