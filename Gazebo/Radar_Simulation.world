@@ -28,7 +28,15 @@
       <include>
         <uri> model://box</uri>
       </include>
-      <pose>2 2 0.5 0 0 0</pose>
+      <pose>2 2.5 0.5 0 0 0</pose>
+      <human:heartRate>80</human:heartRate>
+      <human:respiratoryRate>20</human:respiratoryRate>
+    </model>
+    <model name='human_box'>
+      <include>
+        <uri> model://box</uri>
+      </include>
+      <pose>2 1.5 0.5 0 0 0</pose>
       <human:heartRate>80</human:heartRate>
       <human:respiratoryRate>20</human:respiratoryRate>
     </model>

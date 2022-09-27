@@ -26,6 +26,10 @@ namespace gazebo {
         sensors::RaySensorPtr sensor;
         physics::WorldPtr world;
 
+        std::string namespace_;
+        std::string topic_;
+        std::string frame_id_;
+
         event::ConnectionPtr newLaserScansConnection;
 
         std::vector<double> ranges;
@@ -43,11 +47,13 @@ namespace gazebo {
         double respiratoryRate;
 
         //parameters changable in sdf sensor plugin
-        int penetrableWalls;
+        int penetrableObjects;
         double signalStrength;
         //damping per cm
         double airDamping;
         double wallDamping;
+        //value should be between 0.0 and 1.0
+        double lowerDetectionBorder;
 
 
         std::list<std::string> models;

@@ -71,9 +71,10 @@
         </ray>
         <visualize>true</visualize>
         <plugin name='vital_radar' filename='libvital_radar.so'>
-          <penetrableWalls>1000</penetrableWalls>
+          <penetrableObjects>1000</penetrableObjects>
           <signalStrength>100.0</signalStrength>
           <airDamping>0.0</airDamping>
+          <lowerDetectionBorder>0.0</lowerDetectionBorder>
         </plugin>
       </sensor>
     </link>
