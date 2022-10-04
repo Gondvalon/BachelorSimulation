@@ -36,9 +36,11 @@ void VitalRadar::Load(sensors::SensorPtr _sensor, sdf::ElementPtr _sdf) {
     this->topic_ = "vitalRadar";
     this->frame_id_ = "/vital_radar";
     this->penetrableObjects = 1000;
-    this->signalStrength = 100.0;
-    this->airDamping = 0.0;
-    this->lowerDetectionBorder = 0.0;
+    this->radarPower = 100000.0;
+    this->gain = 1.0;
+    this->receivableSignalArea = 0.01;
+    this->defaultDamping = 1.0;
+    this->minDetectablePower = 0.0;
 
     if (_sdf->HasElement("robotNamespace")) {
         this->namespace_ = _sdf->GetElement("robotNamespace")->GetValue()->GetAsString();
@@ -53,21 +55,25 @@ void VitalRadar::Load(sensors::SensorPtr _sensor, sdf::ElementPtr _sdf) {
     if (_sdf->HasElement("penetrableObjects")) {
         this->penetrableObjects = std::stoi(_sdf->GetElement("penetrableObjects")->GetValue()->GetAsString());
     }
-    if (_sdf->HasElement("signalStrength")) {
-        this->signalStrength = std::stod(_sdf->GetElement("signalStrength")->GetValue()->GetAsString());
+    if (_sdf->HasElement("radarPower")) {
+        this->radarPower = std::stod(_sdf->GetElement("radarPower")->GetValue()->GetAsString());
     }
-    if (_sdf->HasElement("airDamping")) {
-        this->airDamping = std::stod(_sdf->GetElement("airDamping")->GetValue()->GetAsString());
+    if (_sdf->HasElement("gain")) {
+        this->gain = std::stod(_sdf->GetElement("gain")->GetValue()->GetAsString());
     }
-    if (_sdf->HasElement("lowerDetectionBorder")) {
-        this->lowerDetectionBorder = std::stod(_sdf->GetElement("lowerDetectionBorder")->GetValue()->GetAsString());
+    if (_sdf->HasElement("receivableSignalArea")) {
+        this->receivableSignalArea = std::stod(_sdf->GetElement("receivableSignalArea")->GetValue()->GetAsString());
+    }
+    if (_sdf->HasElement("defaultDamping")) {
+        this->defaultDamping = std::stod(_sdf->GetElement("defaultDamping")->GetValue()->GetAsString());
+    }
+    if (_sdf->HasElement("minDetectablePower")) {
+        this->minDetectablePower = std::stod(_sdf->GetElement("minDetectablePower")->GetValue()->GetAsString());
     }
 
     this->newLaserScansConnection =
             this->sensor->LaserShape()->ConnectNewLaserScans(std::bind(&VitalRadar::OnNewLaserScans, this));
 
-    this->models = {};
-    this->modelHits = 0;
 };
 
 void VitalRadar::OnNewLaserScans() {
@@ -82,10 +88,16 @@ void VitalRadar::OnNewLaserScans() {
         return;
     }
 
+    struct wall {
+        double thickness;
+        double dampingCoeff;
+    };
+    std::vector<wall> currentPath;
     struct human {
         std::string name;
         double distance;
-        double signalStrength;
+        double receivedPower;
+        double rayReflectingArea;
         ignition::math::Vector3d position;
     };
     std::vector<human> humanObjects;
@@ -103,9 +115,10 @@ void VitalRadar::OnNewLaserScans() {
         double rayTravelDist = this->sensor->RangeMin();
         int penetratedWalls = 0;
         std::string oldNameOfHitModel = "";
-        double raySignalStrength = this->signalStrength;
+        double raySignalStrength = 0.0;
+        currentPath.clear();
         while (rayTravelDist <= this->sensor->RangeMax()) {
-            this->wallDamping = this->airDamping;
+            this->wallDamping = this->defaultDamping;
             this->rayShape = this->sensor->LaserShape()->Ray(i);
 
             double sectionTilHit = 0.0;
@@ -125,52 +138,57 @@ void VitalRadar::OnNewLaserScans() {
             nameOfHitModel = nameOfHitModel.substr(0, seperator);
             this->modelHitByRay = this->world->ModelByName(nameOfHitModel);
 
+            currentPath.push_back(wall());
+            currentPath[currentPath.size()-1].thickness = sectionTilHit;
+
             if (nameOfHitModel == oldNameOfHitModel) {
                 penetratedWalls++;
                 if (this->modelHitByRay->GetSDF()->HasElement("vitalRadar:damping")) {
                     this->wallDamping = std::stod(this->modelHitByRay->GetSDF()->GetElement("vitalRadar:damping")->GetValue()->GetAsString());
+                    currentPath[currentPath.size()-1].dampingCoeff = this->wallDamping;
                 }
-                raySignalStrength = raySignalStrength - this->wallDamping * sectionTilHit * 100;
-                printf("penetrated: %d ray:%d\n", penetratedWalls, i);
             } else {
-                raySignalStrength = raySignalStrength - this->airDamping * sectionTilHit * 100;
+                currentPath[currentPath.size()-1].dampingCoeff = this->defaultDamping;
             }
 
-            if (penetratedWalls > this->penetrableObjects || raySignalStrength <= 0) {
+            if (penetratedWalls > this->penetrableObjects) {
                 break;
             }
 
             //finding and calculating found vital signs
-            if (!(nameOfHitModel == oldNameOfHitModel) && (raySignalStrength/this->signalStrength) >= lowerDetectionBorder &&
-                    (this->modelHitByRay->GetSDF()->HasElement("human:heartRate") || this->modelHitByRay->GetSDF()->HasElement("human:respiratoryRate"))) {
-                /*double signalVariation = pow((1.0-raySignalStrength/this->signalStrength),3)*30;
-                if (this->modelHitByRay->GetSDF()->HasElement("human:heartRate")) {
-                    this->heartRate = std::stod(this->modelHitByRay->GetSDF()->GetElement("human:heartRate")->GetValue()->GetAsString());
-                    double heartRateRange[] = {this->heartRate - (this->heartRate * signalVariation),
-                                           this->heartRate + (this->heartRate * signalVariation)};
-                    printf("Is alive with heart: %s\n", this->modelHitByRay->GetSDF()->GetElement("human:heartRate")->GetValue()->GetAsString().c_str());
-                }
-                if (this->modelHitByRay->GetSDF()->HasElement("human:respiratoryRate")) {
-                    this->respiratoryRate = std::stod(this->modelHitByRay->GetSDF()->GetElement("human:respiratoryRate")->GetValue()->GetAsString());
-                    double respiratoryRateRange[] = {this->respiratoryRate - (this->respiratoryRate * signalVariation),
-                                                 this->respiratoryRate + (this->respiratoryRate * signalVariation)};
-                }
-                 */
+            if (!(nameOfHitModel == oldNameOfHitModel) && (this->modelHitByRay->GetSDF()->HasElement("human:heartRate") ||
+                    this->modelHitByRay->GetSDF()->HasElement("human:respiratoryRate"))) {
 
-                //humanObjects.push_back(make_tuple(nameOfHitModel, rayTravelDist+sectionTilHit+this->sensor->RangeMin(), raySignalStrength, this->rayEnd));
-                humanObjects.push_back(human());
-                humanObjects[humanObjects.size()-1].name = nameOfHitModel;
-                humanObjects[humanObjects.size()-1].distance = rayTravelDist+sectionTilHit+this->sensor->RangeMin();
-                humanObjects[humanObjects.size()-1].signalStrength = raySignalStrength;
-                humanObjects[humanObjects.size()-1].position = this->rayEnd;
+                //calculate surface area for ray
+                double horizontalAngle = (this->sensor->AngleMax().Radian() - this->sensor->AngleMin().Radian()) /
+                        (this->sensor->RayCount() - 1);
+                double verticalAngle = (this->sensor->VerticalAngleMax().Radian() - this->sensor->AngleMin().Radian()) /
+                        (this->sensor->VerticalRayCount() -1);
+                double raySurfaceCoverage = sin(horizontalAngle) * (rayTravelDist + sectionTilHit) *
+                        sin(verticalAngle) * (rayTravelDist + sectionTilHit);
+
+                //calculate received power without area
+                double medianDampingCoeff = 0.0;
+                double sectionPercentage;
+                double rayLength = rayTravelDist + sectionTilHit - this->sensor->RangeMin();
+                for (int i = 0; i < currentPath.size(); i++) {
+                    sectionPercentage = currentPath[i].thickness / (rayLength);
+                    medianDampingCoeff = medianDampingCoeff + sectionPercentage * currentPath[i].dampingCoeff;
+                }
+                raySignalStrength = this->radarPower * this->gain * this->receivableSignalArea /
+                        (medianDampingCoeff * pow(rayLength, 4.0) * pow((4 * M_PI), 2.0));
+
+
+                if (raySignalStrength >= this->minDetectablePower ) {
+                    humanObjects.push_back(human());
+                    humanObjects[humanObjects.size()-1].name = nameOfHitModel;
+                    humanObjects[humanObjects.size()-1].distance = rayLength;
+                    humanObjects[humanObjects.size()-1].receivedPower = raySignalStrength;
+                    humanObjects[humanObjects.size()-1].rayReflectingArea = raySurfaceCoverage;
+                    humanObjects[humanObjects.size()-1].position = this->rayEnd;
+                }
             }
-
-            this->modelHits = this->modelHits+1;
-            this->models.push_back(nameOfHitModel);
-            this->models.unique();
-
-
-            rayTravelDist = rayTravelDist + sectionTilHit + 0.001;
+            rayTravelDist = rayTravelDist + sectionTilHit + 0.0001;
             oldNameOfHitModel = nameOfHitModel;
             this->rayShape->SetPoints(this->rayGradient * rayTravelDist, this->rayGradient * this->sensor->RangeMax());
         }
@@ -183,45 +201,27 @@ void VitalRadar::OnNewLaserScans() {
         return a.name < b.name;
     });
     for (int i = 0; i<humanObjects.size(); i++) {
-        printf("Name: %s  Distance: %f  Size:%ld\n", humanObjects[i].name.c_str(), humanObjects[i].distance, humanObjects.size());
+        printf("Name: %s  Distance: %f  Size:%ld  Power:%f\n", humanObjects[i].name.c_str(), humanObjects[i].distance, humanObjects.size(), humanObjects[i].receivedPower);
     }
-    /*for (int i = 0; i <humanObjects.size(); i++) {
-        while (std::get<0>(humanObjects[i]) == std::get<0>(humanObjects[i+1])) {
-            if (humanObjects.size() < 2 || (i+1)>= humanObjects.size()) {
-                break;
-            }
-            if (std::get<1>(humanObjects[i]) <= std::get<1>(humanObjects[i+1])) {
-                humanObjects.erase(humanObjects.begin()+i+1);
-            } else if (std::get<0>(humanObjects[i]) == std::get<0>(humanObjects[i+1])){
-                humanObjects.erase(humanObjects.begin()+i);
-            }
-        }
-    }*/
+    double reflectingArea;
     for (int i = 0; i < humanObjects.size(); i++) {
+        reflectingArea = humanObjects[i].rayReflectingArea;
         while (humanObjects[i].name == humanObjects[i+1].name) {
             if (humanObjects.size() <2 || (i+1) >= humanObjects.size()) {
                 break;
             }
-            if (humanObjects[i].distance <= humanObjects[i+1].distance) {
+            printf("Area: %f\n", reflectingArea);
+            reflectingArea = reflectingArea + humanObjects[i+1].rayReflectingArea;
+            if (humanObjects[i].receivedPower > humanObjects[i+1].receivedPower) {
                 humanObjects.erase(humanObjects.begin()+i+1);
             } else if (humanObjects[i].name == humanObjects[i+1].name) {
                 humanObjects.erase(humanObjects.begin()+i);
             }
         }
+        humanObjects[i].receivedPower = humanObjects[i].receivedPower * reflectingArea;
     }
     for (int i = 0; i<humanObjects.size(); i++) {
-        printf("Name: %s  Distance: %f  Size:%ld\n", humanObjects[i].name.c_str(), humanObjects[i].distance, humanObjects.size());
+        printf("Name: %s  Distance: %f  Size:%ld  Power:%f\n", humanObjects[i].name.c_str(), humanObjects[i].distance, humanObjects.size(), humanObjects[i].receivedPower);
     }
-    
-    this->models.sort();
-    this->models.unique();
-    int listSize = this->models.size();
-    for(int i = 0; i < listSize; i++){
-        printf("FoundModel: %s    ListSize: %ld\n", this->models.front().c_str(), this->models.size());
-        this->models.pop_front();
-    }
-    printf("ModelH: %d\n\n", this->modelHits);
-    this->modelHits = 0;
-
-    this->models.clear();
+    printf("\n");
 }

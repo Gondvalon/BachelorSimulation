@@ -1,7 +1,7 @@
 <?xml version='1.0'?>
 <sdf version='1.7'>
   <model name='sensor'>
-    <link name='radar_link'>
+    <link name='vital_radar_link'>
       <inertial>
         <mass>1</mass>
         <inertia>
@@ -15,7 +15,7 @@
         <pose>0 0 0 0 -0 0</pose>
       </inertial>
       <pose>0 0 0 0 -0 0</pose>
-      <gravity>1</gravity>
+      <gravity>0</gravity>
       <self_collide>0</self_collide>
       <kinematic>0</kinematic>
       <enable_wind>0</enable_wind>
@@ -23,7 +23,7 @@
         <pose>0 0 0 0 -0 0</pose>
         <geometry>
           <box>
-            <size>0 0 0</size>
+            <size>0.4 0.4 0.4</size>
           </box>
         </geometry>
         <material>
@@ -51,20 +51,20 @@
         <ray>
           <scan>
             <horizontal>
-              <samples>3</samples>
+              <samples>16</samples>
               <resolution>1</resolution>
               <min_angle>-0.3</min_angle>
               <max_angle>0.3</max_angle>
             </horizontal>
             <vertical>
-              <samples>3</samples>
+              <samples>16</samples>
               <resolution>1</resolution>
               <min_angle>-0.3</min_angle>
               <max_angle>0.3</max_angle>
             </vertical>
           </scan>
           <range>
-            <min>0.1</min>
+            <min>0.4</min>
             <max>10.0</max>
             <resolution>40</resolution>
           </range>
@@ -72,9 +72,11 @@
         <visualize>true</visualize>
         <plugin name='vital_radar' filename='libvital_radar.so'>
           <penetrableObjects>1000</penetrableObjects>
-          <signalStrength>100.0</signalStrength>
-          <airDamping>0.0</airDamping>
-          <lowerDetectionBorder>0.0</lowerDetectionBorder>
+          <radarPower>1000000.0</radarPower>
+          <gain>1</gain>
+          <receivableSignalArea>0.01</receivableSignalArea>
+          <defaultDamping>1.0</defaultDamping>
+          <minDetectablePower>0.0</minDetectablePower>
         </plugin>
       </sensor>
     </link>

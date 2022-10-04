@@ -48,16 +48,13 @@ namespace gazebo {
 
         //parameters changable in sdf sensor plugin
         int penetrableObjects;
-        double signalStrength;
-        //damping per cm
-        double airDamping;
+        double radarPower;
+        double receivableSignalArea;
+        double gain;
+        //damping should be >=1
+        double defaultDamping;
         double wallDamping;
-        //value should be between 0.0 and 1.0
-        double lowerDetectionBorder;
-
-
-        std::list<std::string> models;
-        int modelHits;
+        double minDetectablePower;
     };
 }
 #endif
