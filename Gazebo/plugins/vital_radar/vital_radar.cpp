@@ -4,10 +4,7 @@
 #include <gazebo/physics/physics.hh>
 #include <ignition/math/Vector3.hh>
 #include <cmath>
-#include <list>
 
-#include <functional>
-#include "gazebo/physics/physics.hh"
 #include "vital_radar.hh"
 
 using namespace gazebo;
@@ -82,9 +79,11 @@ void VitalRadar::OnNewLaserScans() {
     coll->SetWorldPoseDirty();
 
     std::string nameOfHitModel;
+
+    std::vector<double> ranges;
     this->sensor->Ranges(ranges);
 
-    if (this->ranges.size() <= 0) {
+    if (ranges.size() <= 0) {
         return;
     }
 
@@ -96,18 +95,25 @@ void VitalRadar::OnNewLaserScans() {
     struct human {
         std::string name;
         double distance;
+        double heartRate;
+        double respiratoryRate;
         double receivedPower;
         double rayReflectingArea;
         ignition::math::Vector3d position;
     };
     std::vector<human> humanObjects;
 
-    for(int i = 0; i < this->ranges.size(); i++) {
+    physics::ModelPtr modelHitByRay;
+    physics::RayShapePtr rayShape;
+    ignition::math::Vector3d rayStart;
+    ignition::math::Vector3d rayEnd;
+    ignition::math::Vector3d rayGradient;
+    for(int i = 0; i < ranges.size(); i++) {
         //update RayShape collision box position
         physics::CollisionPtr rayColl = boost::dynamic_pointer_cast<physics::Collision>(this->sensor->LaserShape()->Ray(i)->GetParent());
         rayColl->SetWorldPoseDirty();
 
-        if (this->ranges.at(i) > this->sensor->RangeMax()) {
+        if (ranges.at(i) > this->sensor->RangeMax()) {
             continue;
         }
 
@@ -119,14 +125,14 @@ void VitalRadar::OnNewLaserScans() {
         currentPath.clear();
         while (rayTravelDist <= this->sensor->RangeMax()) {
             this->wallDamping = this->defaultDamping;
-            this->rayShape = this->sensor->LaserShape()->Ray(i);
+            rayShape = this->sensor->LaserShape()->Ray(i);
 
             double sectionTilHit = 0.0;
-            this->rayShape->GetIntersection(sectionTilHit, nameOfHitModel);
+            rayShape->GetIntersection(sectionTilHit, nameOfHitModel);
 
-            this->rayShape->RelativePoints(this->rayStart, this->rayEnd);
-            this->rayGradient = this->rayEnd - this->rayStart;
-            this->rayGradient = this->rayGradient.Normalize();
+            rayShape->RelativePoints(rayStart, rayEnd);
+            rayGradient = rayEnd - rayStart;
+            rayGradient = rayGradient.Normalize();
 
             //if no object hit then sectionTilHit will be 1000
             if (sectionTilHit > this->sensor->RangeMax()) {
@@ -136,15 +142,15 @@ void VitalRadar::OnNewLaserScans() {
             std::size_t seperator;
             seperator = nameOfHitModel.find("::");
             nameOfHitModel = nameOfHitModel.substr(0, seperator);
-            this->modelHitByRay = this->world->ModelByName(nameOfHitModel);
+            modelHitByRay = this->world->ModelByName(nameOfHitModel);
 
             currentPath.push_back(wall());
             currentPath[currentPath.size()-1].thickness = sectionTilHit;
 
             if (nameOfHitModel == oldNameOfHitModel) {
                 penetratedWalls++;
-                if (this->modelHitByRay->GetSDF()->HasElement("vitalRadar:damping")) {
-                    this->wallDamping = std::stod(this->modelHitByRay->GetSDF()->GetElement("vitalRadar:damping")->GetValue()->GetAsString());
+                if (modelHitByRay->GetSDF()->HasElement("vitalRadar:damping")) {
+                    this->wallDamping = std::stod(modelHitByRay->GetSDF()->GetElement("vitalRadar:damping")->GetValue()->GetAsString());
                     currentPath[currentPath.size()-1].dampingCoeff = this->wallDamping;
                 }
             } else {
@@ -156,8 +162,8 @@ void VitalRadar::OnNewLaserScans() {
             }
 
             //finding and calculating found vital signs
-            if (!(nameOfHitModel == oldNameOfHitModel) && (this->modelHitByRay->GetSDF()->HasElement("human:heartRate") ||
-                    this->modelHitByRay->GetSDF()->HasElement("human:respiratoryRate"))) {
+            if (!(nameOfHitModel == oldNameOfHitModel) && (modelHitByRay->GetSDF()->HasElement("human:heartRate") &&
+                    modelHitByRay->GetSDF()->HasElement("human:respiratoryRate"))) {
 
                 //calculate surface area for ray
                 double horizontalAngle = (this->sensor->AngleMax().Radian() - this->sensor->AngleMin().Radian()) /
@@ -178,31 +184,32 @@ void VitalRadar::OnNewLaserScans() {
                 raySignalStrength = this->radarPower * this->gain * this->receivableSignalArea /
                         (medianDampingCoeff * pow(rayLength, 4.0) * pow((4 * M_PI), 2.0));
 
+                double heartRate = std::stod(modelHitByRay->GetSDF()->GetElement("human:heartRate")->GetValue()->GetAsString());
+                double respiratoryRate = std::stod(modelHitByRay->GetSDF()->GetElement("human:respiratoryRate")->GetValue()->GetAsString());
 
-                if (raySignalStrength >= this->minDetectablePower ) {
+                if (raySignalStrength > this->minDetectablePower ) {
                     humanObjects.push_back(human());
                     humanObjects[humanObjects.size()-1].name = nameOfHitModel;
+                    humanObjects[humanObjects.size()-1].heartRate = heartRate;
+                    humanObjects[humanObjects.size()-1].respiratoryRate = respiratoryRate;
                     humanObjects[humanObjects.size()-1].distance = rayLength;
                     humanObjects[humanObjects.size()-1].receivedPower = raySignalStrength;
                     humanObjects[humanObjects.size()-1].rayReflectingArea = raySurfaceCoverage;
-                    humanObjects[humanObjects.size()-1].position = this->rayEnd;
+                    humanObjects[humanObjects.size()-1].position = rayEnd;
                 }
             }
             rayTravelDist = rayTravelDist + sectionTilHit + 0.0001;
             oldNameOfHitModel = nameOfHitModel;
-            this->rayShape->SetPoints(this->rayGradient * rayTravelDist, this->rayGradient * this->sensor->RangeMax());
+            rayShape->SetPoints(rayGradient * rayTravelDist, rayGradient * this->sensor->RangeMax());
         }
         //resets ray
-        this->rayShape->SetPoints(this->rayGradient * this->sensor->RangeMin(), this->rayGradient * this->sensor->RangeMax());
+        rayShape->SetPoints(rayGradient * this->sensor->RangeMin(), rayGradient * this->sensor->RangeMax());
     }
 
     //handling of found human objects
     std::sort(humanObjects.begin(), humanObjects.end(), [](human a, human b) {
         return a.name < b.name;
     });
-    for (int i = 0; i<humanObjects.size(); i++) {
-        printf("Name: %s  Distance: %f  Size:%ld  Power:%f\n", humanObjects[i].name.c_str(), humanObjects[i].distance, humanObjects.size(), humanObjects[i].receivedPower);
-    }
     double reflectingArea;
     for (int i = 0; i < humanObjects.size(); i++) {
         reflectingArea = humanObjects[i].rayReflectingArea;
@@ -210,7 +217,6 @@ void VitalRadar::OnNewLaserScans() {
             if (humanObjects.size() <2 || (i+1) >= humanObjects.size()) {
                 break;
             }
-            printf("Area: %f\n", reflectingArea);
             reflectingArea = reflectingArea + humanObjects[i+1].rayReflectingArea;
             if (humanObjects[i].receivedPower > humanObjects[i+1].receivedPower) {
                 humanObjects.erase(humanObjects.begin()+i+1);
@@ -220,8 +226,28 @@ void VitalRadar::OnNewLaserScans() {
         }
         humanObjects[i].receivedPower = humanObjects[i].receivedPower * reflectingArea;
     }
+
+    //calculate the vital signs with noise
+    double deviationPercentage;
     for (int i = 0; i<humanObjects.size(); i++) {
         printf("Name: %s  Distance: %f  Size:%ld  Power:%f\n", humanObjects[i].name.c_str(), humanObjects[i].distance, humanObjects.size(), humanObjects[i].receivedPower);
+
+        deviationPercentage = 0.2 + pow(((humanObjects[i].receivedPower - this->minDetectablePower) /
+                (this->radarPower - this->minDetectablePower)), 1.0/4.0) * - 0.2;
+        printf("Calc: %f \n", ((humanObjects[i].receivedPower - this->minDetectablePower) /
+                (this->radarPower - this->minDetectablePower)));
+        double heartDeviation = humanObjects[i].heartRate * deviationPercentage;
+        double respiratoryDeviation = humanObjects[i].respiratoryRate * deviationPercentage;
+        printf("DevPer: %f  HDev: %f  RDev: %f\n", deviationPercentage, heartDeviation, respiratoryDeviation);
+        std::normal_distribution<> distHeart(humanObjects[i].heartRate, heartDeviation);
+        std::normal_distribution<> distRespiratory(humanObjects[i].respiratoryRate, respiratoryDeviation);
+
+        std::random_device seed{};
+        std::mt19937 generator{seed()};
+        double noisyHeartRate = distHeart(generator);
+        double noisyRespiratoryRate = distRespiratory(generator);
+        printf("HNoise: %f, RNoise: %f, Name: %s\n",noisyHeartRate, noisyRespiratoryRate, humanObjects[i].name.c_str());
     }
+
     printf("\n");
 }

@@ -22,13 +22,13 @@
       <include merge='true'>
         <uri>model://vital_radar</uri>
       </include>
-      <pose>1 2 4 0 0.19 1.22</pose>
+      <pose>1 2 0.5 0 0 0</pose>
     </model>
     <model name='human_2'>
       <include>
         <uri> model://human</uri>
       </include>
-      <pose>2 2.5 0.5 0 0 0</pose>
+      <pose>2 4 0.5 0 0 0</pose>
       <human:heartRate>80</human:heartRate>
       <human:respiratoryRate>20</human:respiratoryRate>
     </model>
@@ -36,7 +36,7 @@
       <include>
         <uri> model://human</uri>
       </include>
-      <pose>2 1.5 0.5 0 0 0</pose>
+      <pose>2 2 0.5 0 0 0</pose>
       <vitalRadar:damping>15.0</vitalRadar:damping>
       <human:heartRate>80</human:heartRate>
       <human:respiratoryRate>20</human:respiratoryRate>
